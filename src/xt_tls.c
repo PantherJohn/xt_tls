@@ -263,39 +263,38 @@ static bool tls_mt(const struct sk_buff *skb, struct xt_action_param *par)
 	int result = -1, proto = IPPROTO_MAX;
 	bool invert = (info->invert & XT_TLS_OP_HOST);
 
-  bool match = false;
-	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
-  
-  switch (ip_header->version) {
-    case 4:
-      proto = ip_header->protocol;
-      break;
-    case 6:
-      struct ipv6hdr *ipv6_header = (struct ipv6hdr *)skb_network_header(skb);
-      proto = ipv6_header->nexthdr;
-      break;
-  }
-  
-  switch (proto) {
-    case IPPROTO_TCP:
-      result = get_tls_hostname(skb, &parsed_host);
-      break;
-    case IPPROTO_UDP:
-      result = get_quic_hostname(skb, &parsed_host);
-      break;
-    default:
-      #ifdef XT_TLS_DEBUG
-        	printk("[xt_tls] neither TCP nor UDP %d\n", proto);
-      #endif
-      break;
-  }
-  
-  if (result != 0)
+    bool match = false;
+    unsigned char *header = skb_network_header(skb);
+    struct iphdr *ip_header = (struct iphdr *) header;
+
+    switch (ip_header->version) {
+        case 4:
+            proto = ip_header->protocol;
+            break;
+        case 6:
+            proto = ((struct ipv6hdr *) header)->nexthdr;
+            break;
+    }
+
+    switch (proto) {
+        case IPPROTO_TCP:
+            result = get_tls_hostname(skb, &parsed_host);
+            break;
+        case IPPROTO_UDP:
+            result = get_quic_hostname(skb, &parsed_host);
+            break;
+        default:
+#ifdef XT_TLS_DEBUG
+            printk("[xt_tls] neither TCP nor UDP %d\n", proto);
+#endif
+            break;
+    }
+
+    if (result != 0)
     return false;
 
 	printk("match type: %d", info->match_type);
-	switch (info->match_type)
-	{
+	switch (info->match_type) {
 		case XT_TLS_OP_GROUP:
 			match = dnset_match((u8 *)info->tls_group, parsed_host);
 			break;
