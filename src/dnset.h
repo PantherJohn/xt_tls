@@ -16,4 +16,9 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
+/**
+ * Note to self
+ * TODO: implement an efficient domain matching algo
+**/
 bool dnset_match(u8 * group_name, u8 * domain_name);
