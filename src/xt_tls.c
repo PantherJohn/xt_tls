@@ -11,8 +11,12 @@
 #include <linux/udp.h>
 #include <linux/inet.h>
 #include <asm/errno.h>
-#include <linux/glob.h>
 
+#ifdef XT_TLS_GROUP_SUPPORT
+#include "dnset.h"
+#endif
+
+#include "compat.h"
 #include "xt_tls.h"
 
 /*
@@ -256,47 +260,49 @@ static bool tls_mt(const struct sk_buff *skb, struct xt_action_param *par)
 {
 	char *parsed_host;
 	const struct xt_tls_info *info = par->matchinfo;
-	int result,proto;
+	int result = -1, proto = IPPROTO_MAX;
 	bool invert = (info->invert & XT_TLS_OP_HOST);
-	bool match;
+
+  bool match = false;
 	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
-	if (ip_header->version == 4) {//ipv4
-		proto=ip_header->protocol;
-//#ifdef XT_TLS_DEBUG
-//                printk("[xt_tls] IPv4\n");
-//#endif
-	}else if (ip_header->version == 6) {
-		struct ipv6hdr *ipv6_header = (struct ipv6hdr  *)skb_network_header(skb);
-                proto=ipv6_header->nexthdr;
-		proto=6;
-//#ifdef XT_TLS_DEBUG
-//                printk("[xt_tls] IPv6\n");
-//	}else{
-//		// This shouldn't be possible.
-//		printk("[xt_tls] not IPv4 nor IPv6\n");
-//#endif
-		return false;
-	}	
-	if (proto == IPPROTO_TCP) {
-//#ifdef XT_TLS_DEBUG
-//                printk("[xt_tls] TCP\n");
-//#endif
-		if ((result = get_tls_hostname(skb, &parsed_host)) != 0)
-			return false;
-	} else if (proto == IPPROTO_UDP) {
-//#ifdef XT_TLS_DEBUG
-//                printk("[xt_tls] UDP\n");
-//#endif
-		if ((result = get_quic_hostname(skb, &parsed_host)) != 0)
-			return false;
-	} else {
-#ifdef XT_TLS_DEBUG
-        	printk("[xt_tls] not TCP nor UDP %d\n",proto);
-#endif
-		// This shouldn't be possible.
-		return false;
+  
+  switch (ip_header->version) {
+    case 4:
+      proto = ip_header->protocol;
+      break;
+    case 6:
+      struct ipv6hdr *ipv6_header = (struct ipv6hdr *)skb_network_header(skb);
+      proto = ipv6_header->nexthdr;
+      break;
+  }
+  
+  switch (proto) {
+    case IPPROTO_TCP:
+      result = get_tls_hostname(skb, &parsed_host);
+      break;
+    case IPPROTO_UDP:
+      result = get_quic_hostname(skb, &parsed_host);
+      break;
+    default:
+      #ifdef XT_TLS_DEBUG
+        	printk("[xt_tls] neither TCP nor UDP %d\n", proto);
+      #endif
+      break;
+  }
+  
+  if (result != 0)
+    return false;
+
+	printk("match type: %d", info->match_type);
+	switch (info->match_type)
+	{
+		case XT_TLS_OP_GROUP:
+			match = dnset_match((u8 *)info->tls_group, parsed_host);
+			break;
+		case XT_TLS_OP_HOST:
+			match = glob_match(info->tls_host, parsed_host);
+			break;
 	}
-	match = glob_match(info->tls_host, parsed_host);
 
 #ifdef XT_TLS_DEBUG
 	printk("[xt_tls] Parsed domain: %s\n", parsed_host);
@@ -306,7 +312,6 @@ static bool tls_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		match = !match;
 
 	kfree(parsed_host);
-
 	return match;
 }
 
@@ -314,6 +319,7 @@ static bool tls_mt(const struct sk_buff *skb, struct xt_action_param *par)
 static int tls_mt_check (const struct xt_mtchk_param *par)
 {
 	__u16 proto;
+	struct xt_tls_info * info = par->matchinfo;
 
 	if (par->family == NFPROTO_IPV4) {
 		proto = ((const struct ipt_ip *) par->entryinfo)->proto;
@@ -328,6 +334,12 @@ static int tls_mt_check (const struct xt_mtchk_param *par)
 			"-p tcp or -p udp\n");
 		return -EINVAL;
 	}
+
+	// This does probably not belong here, but I'm not sure where else it fits
+	if (strlen(info->tls_group) > 0)
+		info->match_type = XT_TLS_OP_GROUP;
+	if (strlen(info->tls_host) > 0)
+		info->match_type = XT_TLS_OP_HOST;
 
 	return 0;
 }

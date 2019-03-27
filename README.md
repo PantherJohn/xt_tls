@@ -1,19 +1,19 @@
-#xt_tls
+# xt_tls
 
 xt\_tls is an extension for netfilter/IPtables that allows you to filter traffic based on TLS hostnames.
 
-##Features
+## Features
 - Filter TLS traffic based on the SNI extension
 
-##Todo
+## Todo
 - Add more advanced matching features (i.e. wildcard matching)
 - Add support for matching on the server certificate
 
-##Installation
+## Manual Installation
 
-###Prerequisites
-- Kernel headers (`apt install linux-headers-$(uname -r)`)
-- IPtables devel (`apt install iptables-dev`)
+### Prerequisites
+- Kernel headers (`apt install linux-headers-$(uname -r)` or `yum install kernel-devel`)
+- IPtables devel (`apt install iptables-dev` or `yum install iptables-devel`)
 - Glob kernel module
 - Netfilter defrag modules: nf\_defrag\_ipv4 and nf\_defrag\_ipv6
 
@@ -24,7 +24,18 @@ make
 sudo make install
 ```
 
-##Usage
+## [DKMS](https://en.wikipedia.org/wiki/Dynamic_Kernel_Module_Support) Installation
+
+### Additional Prerequisites
+- DKMS (`apt install dkms` or `yum install dkms` (from EPEL) )
+
+```bash
+git clone https://github.com/Lochnair/xt_tls.git
+cd xt_tls
+sudo make dkms-install
+```
+
+## Usage
 
 You can block traffic to Facebook using the following command.
 
@@ -38,13 +49,13 @@ You can also match subdomains using wildcards like this.
 sudo iptables -A OUTPUT -p tcp --dport 443 -m tls --tls-host "\*.googlevideo.com" -j DROP
 ```
 
-##Bugs
+## Bugs
 If you encounter a bug please make sure to include the following things in your bug report:
 - The application used for sending the request
 - The domain your trying to allow/block - Debug output (see the debugging section below)
 - If possible, a TCPDump capture containing the TLS "Client/Server Hello's"
 
-##Debugging
+## Debugging
 
 Since xt\_tls is not thoroughly tested, sometimes weird things happen. This might be caused by an application that sends packets xt\_tls can't parse. For example cURL and wget (or the TLS libary they use) doesn't send a session ID in the "Client Hello", and xt\_tls didn't understand that, so I had to change some things to make it work.
 
@@ -70,6 +81,6 @@ dmesg
 [ 2013.979068] [xt_tls] Domain matches: false, invert: false
 ```
 
-##Credits
+## Credits
 
-I would like to thank the people behind the nDPI project, as the parsing function is based on their work.
+I would like to thank the people behind the nDPI project, as the parsing function is inspired by their work.
