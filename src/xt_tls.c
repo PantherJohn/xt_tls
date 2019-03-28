@@ -33,6 +33,22 @@
 
 #define QUIC_DATA_LEN 1358
 
+const char tls_alert[] = {
+    0x15, /* TLS Alert */
+    0x03, 0x01, /* TLS version  */
+    0x00, 0x02, /* Payload length */
+    0x02, 0x28, /* Fatal, handshake failure */
+};
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Nils Andreas Svee <nils@stokkdalen.no>");
+MODULE_DESCRIPTION("Xtables: TLS (SNI) matching");
+MODULE_ALIAS("ipt_tls");
+
+int __init tls_mt_init(void);
+void __exit tls_mt_exit(void);
+bool tls_mt(const struct sk_buff *, struct xt_action_param *);
+int tls_mt_check(const struct xt_mtchk_param *);
 
 int get_http_hostname(const char *, size_t, char **);
 int parse_http_headers(const char *, const char *, size_t, char **);
@@ -44,8 +60,45 @@ int parse_server_name_extension(const uint8_t*, size_t, char **);
 
 int get_quic_hostname(const char *, size_t, char **);
 
+module_init(tls_mt_init);
+module_exit(tls_mt_exit);
 
-static bool tls_mt(const struct sk_buff *skb, struct xt_action_param *par)
+struct xt_match tls_mt_regs[] __read_mostly = {
+	{
+		.name       = "tls",
+		.revision   = 0,
+		.family     = NFPROTO_IPV4,
+		.checkentry = tls_mt_check,
+		.match      = tls_mt,
+		.matchsize  = sizeof(struct xt_tls_info),
+		.me         = THIS_MODULE,
+	},
+#if IS_ENABLED(CONFIG_IP6_NF_IPTABLES)
+	{
+		.name       = "tls",
+		.revision   = 0,
+		.family     = NFPROTO_IPV6,
+		.checkentry = tls_mt_check,
+		.match      = tls_mt,
+		.matchsize  = sizeof(struct xt_tls_info),
+		.me         = THIS_MODULE,
+	},
+#endif
+};
+
+
+
+int __init tls_mt_init(void)
+{
+	return xt_register_matches(tls_mt_regs, ARRAY_SIZE(tls_mt_regs));
+}
+
+void __exit tls_mt_exit(void)
+{
+	xt_unregister_matches(tls_mt_regs, ARRAY_SIZE(tls_mt_regs));
+}
+
+bool tls_mt(const struct sk_buff *skb, struct xt_action_param *par)
 {
 	char *parsed_host;
 	const struct xt_tls_info *info = par->matchinfo;
@@ -71,14 +124,14 @@ static bool tls_mt(const struct sk_buff *skb, struct xt_action_param *par)
     switch (proto) {
         case IPPROTO_TCP:
 			tcp_header = (struct tcphdr *) theader;
-			*data = (char *)((unsigned char *)tcp_header + (tcp_header->doff * 4));
+			data = (char *)((unsigned char *)tcp_header + (tcp_header->doff * 4));
 			len = (uintptr_t)skb_tail_pointer(skb) - (uintptr_t)data;
             if ((result = get_tls_hostname(data, len, &parsed_host)) != 0)
 				result = get_http_hostname(data, len, &parsed_host);
             break;
         case IPPROTO_UDP:
 			udp_header = (struct udphdr *) theader;
-			*data = (char *)udp_header + 8;
+			data = (char *)udp_header + 8;
             result = get_quic_hostname(data, ntohs(udp_header->len), &parsed_host);
             break;
 #ifdef XT_TLS_DEBUG
@@ -112,8 +165,7 @@ static bool tls_mt(const struct sk_buff *skb, struct xt_action_param *par)
 	return match;
 }
 
-
-static int tls_mt_check (const struct xt_mtchk_param *par)
+int tls_mt_check(const struct xt_mtchk_param *par)
 {
 	__u16 proto;
 	struct xt_tls_info * info = par->matchinfo;
@@ -141,46 +193,6 @@ static int tls_mt_check (const struct xt_mtchk_param *par)
 	return 0;
 }
 
-static struct xt_match tls_mt_regs[] __read_mostly = {
-	{
-		.name       = "tls",
-		.revision   = 0,
-		.family     = NFPROTO_IPV4,
-		.checkentry = tls_mt_check,
-		.match      = tls_mt,
-		.matchsize  = sizeof(struct xt_tls_info),
-		.me         = THIS_MODULE,
-	},
-#if IS_ENABLED(CONFIG_IP6_NF_IPTABLES)
-	{
-		.name       = "tls",
-		.revision   = 0,
-		.family     = NFPROTO_IPV6,
-		.checkentry = tls_mt_check,
-		.match      = tls_mt,
-		.matchsize  = sizeof(struct xt_tls_info),
-		.me         = THIS_MODULE,
-	},
-#endif
-};
-
-static int __init tls_mt_init (void)
-{
-	return xt_register_matches(tls_mt_regs, ARRAY_SIZE(tls_mt_regs));
-}
-
-static void __exit tls_mt_exit (void)
-{
-	xt_unregister_matches(tls_mt_regs, ARRAY_SIZE(tls_mt_regs));
-}
-
-module_init(tls_mt_init);
-module_exit(tls_mt_exit);
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Nils Andreas Svee <nils@stokkdalen.no>");
-MODULE_DESCRIPTION("Xtables: TLS (SNI) matching");
-MODULE_ALIAS("ipt_tls");
 
 
 /*
@@ -208,14 +220,6 @@ MODULE_ALIAS("ipt_tls");
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-const char tls_alert[] = {
-    0x15, /* TLS Alert */
-    0x03, 0x01, /* TLS version  */
-    0x00, 0x02, /* Payload length */
-    0x02, 0x28, /* Fatal, handshake failure */
-};
-
 
 /**
  * - get_http_hostname
