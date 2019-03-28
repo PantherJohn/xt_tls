@@ -23,14 +23,14 @@ static const struct xt_option_entry tls_opts[] = {
         .name = "tls-group",
         .id = O_TLS_GROUP,
         .type = XTTYPE_STRING,
-        .flags = XTOPT_INVERT | XTOPT_PUT, 
+        .flags = XTOPT_INVERT | XTOPT_PUT,
                     XTOPT_POINTER(struct xt_tls_info, tls_group),
     },
     {
         .name = "tls-host",
         .id = O_TLS_HOST,
         .type = XTTYPE_STRING,
-        .flags = XTOPT_INVERT | XTOPT_PUT, 
+        .flags = XTOPT_INVERT | XTOPT_PUT,
                     XTOPT_POINTER(struct xt_tls_info, tls_host),
     },
     XTOPT_TABLEEND,
@@ -62,11 +62,11 @@ static void tls_check(struct xt_fcheck_call *cb)
     struct xt_tls_info *info = (struct xt_tls_info *)cb->data;
 
     if (strlen(info->tls_group) && strlen(info->tls_host))
-        xtables_error(PARAMETER_PROBLEM, 
+        xtables_error(PARAMETER_PROBLEM,
             "TLS: can't use --tls-group and --tls-host at the same time");
 
     if (cb->xflags == 0)
-        xtables_error(PARAMETER_PROBLEM, 
+        xtables_error(PARAMETER_PROBLEM,
             "TLS: no tls option specified");
 }
 
