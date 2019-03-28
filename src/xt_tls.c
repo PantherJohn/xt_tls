@@ -98,10 +98,8 @@ static bool tls_mt(const struct sk_buff *skb, struct xt_action_param *par)
             tcp_header = (struct tcphdr *) theader;
             data = (char *)((unsigned char *)tcp_header + (tcp_header->doff * 4));
             len = (uintptr_t)skb_tail_pointer(skb) - (uintptr_t)data;
-            if ((result = get_tls_hostname(data, len, &parsed_host)) < 0) {
-                strcpy(parsed_host, "");
+            if ((result = get_tls_hostname(data, len, &parsed_host)) < 0)
                 result = get_http_hostname(data, len, &parsed_host);
-            }
             break;
         case IPPROTO_UDP:
             udp_header = (struct udphdr *) theader;
