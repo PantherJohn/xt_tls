@@ -1,8 +1,8 @@
 #ifndef _XT_TLS_TARGET_H
 #define _XT_TLS_TARGET_H
 
-#define XT_TLS_OP_GROUP	0x01
-#define XT_TLS_OP_HOST	0x02
+#define XT_TLS_OP_HOST	0
+#define XT_TLS_OP_GROUP	1
 
 /* target info */
 struct xt_tls_info {

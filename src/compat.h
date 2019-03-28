@@ -90,3 +90,15 @@
 #else
 	#include <linux/glob.h>
 #endif
+
+#ifndef MIN
+#define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
+#endif
+
+#ifndef malloc
+#define malloc(len) kmalloc(len, GFP_KERNEL);
+#endif
+
+#ifndef isblank
+#define isblank(c) (c == ' ' || c == '\t')
+#endif
