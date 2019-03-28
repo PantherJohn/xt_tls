@@ -46,7 +46,7 @@
 
 
 #ifndef isblank
-#define isblank(c) (c == ' ' || c == '\t')
+#define isblank(c) (c == ' ' || c == '\t' || c == '\n')
 #endif
 
 #ifndef MIN
