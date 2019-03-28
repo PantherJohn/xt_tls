@@ -49,6 +49,10 @@ static void tls_parse(struct xt_option_call *cb)
 				info->invert |= XT_TLS_OP_HOST;
 			break;
 	}
+	if (strlen(info->tls_group))
+		info->match_type = XT_TLS_OP_GROUP;
+	if (strlen(info->tls_host))
+		info->match_type = XT_TLS_OP_HOST;
 }
 
 static void tls_check(struct xt_fcheck_call *cb)
@@ -61,8 +65,8 @@ static void tls_check(struct xt_fcheck_call *cb)
 	if (cb->xflags == 0)
 		xtables_error(PARAMETER_PROBLEM, "TLS: no tls option specified");
 
-	if (info->match_type == 0)
-		xtables_error(PARAMETER_PROBLEM, "TLS: match type is zero");
+	/*if (info->match_type == 0)
+		xtables_error(PARAMETER_PROBLEM, "TLS: match type is zero");*/
 }
 
 static void tls_print(const void *ip, const struct xt_entry_match *match, int numeric)
@@ -81,15 +85,7 @@ static void tls_print(const void *ip, const struct xt_entry_match *match, int nu
 
 static void tls_save(const void *ip, const struct xt_entry_match *match)
 {
-	const struct xt_tls_info *info = (const struct xt_tls_info *)match->data;
-
-	if (strlen(info->tls_group) > 0)
-		printf(" %s --tls-group %s",
-			(info->invert & XT_TLS_OP_GROUP) ? " !":"", info->tls_group);
-
-	if (strlen(info->tls_host) > 0)
-		printf(" %s --tls-host %s",
-			(info->invert & XT_TLS_OP_HOST) ? " !":"", info->tls_host);
+	tls_print(ip, match, 0);
 }
 
 static struct xtables_match tls_match = {
