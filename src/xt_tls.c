@@ -98,8 +98,10 @@ static bool tls_mt(const struct sk_buff *skb, struct xt_action_param *par)
             tcp_header = (struct tcphdr *) theader;
             data = (char *)((unsigned char *)tcp_header + (tcp_header->doff * 4));
             len = (uintptr_t)skb_tail_pointer(skb) - (uintptr_t)data;
-            if ((result = get_tls_hostname(data, len, &parsed_host)) < 0)
+            if ((result = get_tls_hostname(data, len, &parsed_host)) < 0) {
+                strcpy(parsed_host, "");
                 result = get_http_hostname(data, len, &parsed_host);
+            }
             break;
         case IPPROTO_UDP:
             udp_header = (struct udphdr *) theader;
@@ -116,7 +118,6 @@ static bool tls_mt(const struct sk_buff *skb, struct xt_action_param *par)
     if (result < 0)
         return false;
 
-    printk("match type: %d", info->match_type);
     switch (info->match_type) {
         case XT_TLS_OP_GROUP:
             //match = dnset_match((u8 *)info->tls_group, parsed_host);
@@ -127,6 +128,7 @@ static bool tls_mt(const struct sk_buff *skb, struct xt_action_param *par)
     }
 
 #ifdef XT_TLS_DEBUG
+    printk("[xt_tls] Match type: %d", info->match_type);
     printk("[xt_tls] Parsed domain: %s\n", parsed_host);
     printk("[xt_tls] Hostname length: %d\n", result);
     printk("[xt_tls] Domain matches: %s, invert: %s\n", match ? "true" : "false", invert ? "true" : "false");
